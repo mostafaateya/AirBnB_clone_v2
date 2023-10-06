@@ -1,49 +1,39 @@
 #!/usr/bin/python3
-from fabric.api import *
+"""
+    Distributes an archive to your web servers,
+    using the function do_deploy
+    def do_deploy(archive_path):
+    Return False iff archive path doesn't exist
+"""
+
+from fabric.api import put, run, env
 from os.path import exists
-from datetime import datetime
-from fabric.api import local
-
 env.hosts = ['54.87.205.155', '54.90.50.215']
-
-
-def do_pack():
-    '''
-    Fabric script that generates a .tgz archive from the
-    contents of the web_static
-    '''
-    try:
-        filepath = 'versions/web_static_' + datetime.now().\
-                   strftime('%Y%m%d%H%M%S') + '.tgz'
-        local('mkdir -p versions')
-        local('tar -zcvf versions/web_static_$(date +%Y%m%d%H%M%S).tgz\
-        web_static')
-        print('web_static packed: {} -> {}'.
-              format(filepath, os.path.getsize(filepath)))
-    except:
-        return None
+env.user = 'ubuntu'
+env.identity = '~/.ssh/id_rsa'
+env.password = None
 
 
 def do_deploy(archive_path):
-        """
-        Depploy to yoru webs server
     """
-        if exists(archive_path) is False:
-            return False
-        file_name = archive_path.split('/')[1]
-        file_path = '/data/web_static/releases'
-        try:
-            put(archive_path, '/tmp/')
-            run('mkdir -p {}{}'.format(file_path, file_name[:-4]))
-            run('tar -xzf /tmp/{} -C {}{}/'.format(file_name,
-                                                   file_path, file_name[:-4]))
-            run('rm /tmp/{}'.format(file_name))
-            run('mv {}{}/web_static/* {}{}/'.format(file_path, file_name[:-4],
-                                                    file_path, file_name[:-4]))
-            run('rm -rf {}{}/web_static'.format(file_path, file_name[:-4]))
-            run('rm -rf /data/web_static/current')
-            run('ln -s {}{}/ /data/web_static/current'.format(file_path,
-                                                              file_name[:-4]))
-            return True
-        except:
-            return False
+    Deploys an archive to a server
+    """
+    if exists(archive_path) is False:
+        return False
+    try:
+        file_N = archive_path.split("/")[-1]
+        n = file_N.split(".")[0]
+        path = "/data/web_static/releases/"
+        put(archive_path, '/tmp/')
+        run('mkdir -p {}{}/'.format(path, n))
+        run('tar -xzf /tmp/{} -C {}{}/'.format(file_N, path, n))
+        run('rm /tmp/{}'.format(file_N))
+        run('mv {0}{1}/web_static/* {0}{1}/'.format(path, n))
+        run('rm -rf {}{}/web_static'.format(path, n))
+        run('rm -rf /data/web_static/current')
+        run('ln -s {}{}/ /data/web_static/current'.format(path, n))
+        run('chmod -R 755 /data/')
+        print("New version deployed!")
+        return True
+    except FileNotFoundError:
+        return False
