@@ -1,27 +1,38 @@
 #!/usr/bin/python3
-""" STATE MODULE """
-from sqlalchemy import Column, String
+"""This is the state class"""
+from os import getenv
+from models.base_model import BaseModel, Base
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from models.base_model import Base, BaseModel
-from models.city import City
-import models
 
 
 class State(BaseModel, Base):
-    """ CLASS STATE """
-    __tablename__ = "states"
-    name = Column(String(128), nullable=False)
-    cities = relationship('City', backref='state', cascade='all, delete')
+    """This is the class for State
+    Attributes:
+        name: input name
+        __tablename__: name for db table
+        cities: relation with city
+    """
+    __tablename__ = 'states'
+    if getenv('HBNB_TYPE_STORAGE') == 'db':
+        name = Column(String(128), nullable=False)
+        cities = relationship('City', cascade='all, delete',
+                              backref='state')
+    else:
+        @property
+        def cities(self):
+            """Returns the list of City instances with
+            state_id equals to the current State.id
+            city_list: list of cities from a state
+            """
+            from models import storage
+            from models.city import City
 
-    @property
-    def cities(self):
-        """
-        LIST OF CITY
-        """
+            city_list = []
+            city_dict = storage.all(City)
 
-        records = models.storage.all()
-        res = []
-        for city in records.values():
-            if self.id == city.state_id:
-                res.append(city)
-        return res
+            for city in city_dict.values():
+                if city.state_id == self.id:
+                    city_list.append(city)
+            return city_list
